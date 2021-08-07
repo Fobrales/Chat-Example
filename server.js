@@ -6,6 +6,7 @@ const server = http.createServer(app);
 const moment = require('moment');
 const { Server } = require("socket.io");
 const io = new Server(server, {cors: {origin: "*"}});
+const { v4: uuidv4 } = require('uuid');
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
@@ -22,14 +23,28 @@ function getUsers(io, socket) {
   if (list) {
     for (let user of list) {
       var data = io.of('/').sockets.get(user);
-      users.push(data.username);
+      users.push(data.username || 'Guest');
     }
   }
   return users;
 }
 
+function getPeers(io, socket) {
+  var list = io.sockets.adapter.rooms.get(socket.room);
+  var peers = [];
+  if (list) {
+    for (let user of list) {
+      var data = io.of('/').sockets.get(user);
+      if (data.peerId) {
+        peers.push(data.peerId);
+      }
+    }
+  }
+  return peers;
+}
+
 io.on('connection', (socket) => {
-  // If user was invited, he connect to room with his inviter, else he connect to his room.
+  // If user was invited, he connect to room with his inviter, else he connect to his room. Room names = socket.id of users.
   const invite = socket.handshake.query.url;
   if (invite) {
     socket.join(invite);
@@ -38,21 +53,30 @@ io.on('connection', (socket) => {
     socket.room = socket.id;
   }
   socket.emit("inviteURL", socket.room);
+  var users = getUsers(io, socket);
+  io.to(socket.room).emit("users", users);
 
   // When user enter name, all users in room get new list of users of room.
   socket.on('username', (username) => {
     socket.username = username;
-    users = getUsers(io, socket);
+    var users = getUsers(io, socket);
     io.to(socket.room).emit("users", users);
+  });
+
+  socket.on('addPeer', () => {
+    socket.peerId = socket.id;
+    socket.emit("getPeerId", socket.peerId);
+    var peers = getPeers(io, socket);
+    io.to(socket.room).emit("getOtherPeers", peers);
   })
 
   // Received message emit to other users in room
   socket.on('message', (data) => {
     io.to(socket.room).emit("message", {user: data.user, text: data.text, time: moment().format("HH:mm MMM Do")});
-  })
+  });
 
   socket.on('disconnect', () => {
-    users = getUsers(io, socket);
+    var users = getUsers(io, socket);
     io.to(socket.room).emit("users", users);
   });
 });
