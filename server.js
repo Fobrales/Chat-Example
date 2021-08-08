@@ -6,7 +6,6 @@ const server = http.createServer(app);
 const moment = require('moment');
 const { Server } = require("socket.io");
 const io = new Server(server, {cors: {origin: "*"}});
-const { v4: uuidv4 } = require('uuid');
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
@@ -29,20 +28,6 @@ function getUsers(io, socket) {
   return users;
 }
 
-function getPeers(io, socket) {
-  var list = io.sockets.adapter.rooms.get(socket.room);
-  var peers = [];
-  if (list) {
-    for (let user of list) {
-      var data = io.of('/').sockets.get(user);
-      if (data.peerId) {
-        peers.push(data.peerId);
-      }
-    }
-  }
-  return peers;
-}
-
 io.on('connection', (socket) => {
   // If user was invited, he connect to room with his inviter, else he connect to his room. Room names = socket.id of users.
   const invite = socket.handshake.query.url;
@@ -62,13 +47,6 @@ io.on('connection', (socket) => {
     var users = getUsers(io, socket);
     io.to(socket.room).emit("users", users);
   });
-
-  socket.on('addPeer', () => {
-    socket.peerId = socket.id;
-    socket.emit("getPeerId", socket.peerId);
-    var peers = getPeers(io, socket);
-    io.to(socket.room).emit("getOtherPeers", peers);
-  })
 
   // Received message emit to other users in room
   socket.on('message', (data) => {

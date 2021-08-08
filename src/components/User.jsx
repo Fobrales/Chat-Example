@@ -1,7 +1,6 @@
 import Chat from './Chat'
 import Sending from './Sending'
 import React from 'react';
-import Video from './Video'
 import { io } from "socket.io-client";
 
 const url = window.location.pathname.replace("/chat=","").replace("/", "");
@@ -9,11 +8,12 @@ const ws = io('http://localhost:5000', { query: {"url" : url}, transports: ['web
 
     class User extends React.Component {
 
-    //this component provide form for create username and connect to websocket server, then server send to client url for invite friends to room.
-    // There can be several chat rooms at the same time.
+    // this component provide form for create username
+    // component connect to websocket server, then server send to client url for invite friends to room.
+    // there can be several chat rooms at the same time.
     constructor(props) {
         super(props);
-        this.state = { username: null, url: null, enter: null, ws: null, peerId: null};
+        this.state = { username: null, url: null, enter: null, ws: null, error: null};
         this.setUsername = this.setUsername.bind(this);
         this.handleChange = this.handleChange.bind(this);
     }
@@ -25,8 +25,8 @@ const ws = io('http://localhost:5000', { query: {"url" : url}, transports: ['web
                 {!this.state.enter ? (<div>
                     <input onChange={this.handleChange} placeholder={"Enter your name"} className={"form-control my-2"} />
                     <button onClick={this.setUsername} className={"btn btn-primary"}>OK</button>
+                    {this.state.error && <div className={'alert alert-danger my-2'}>{this.state.error}</div>}
                 </div>) : (<div>
-                    < Video username={this.state.username} socket={ws}/>
                     < Chat username={this.state.username} socket={ws}/>
                     < Sending username={this.state.username} socket={ws}/>
                 </div>)}
@@ -36,7 +36,9 @@ const ws = io('http://localhost:5000', { query: {"url" : url}, transports: ['web
 
     // handle changes in the text box and set state 'username'
     handleChange(e) {
-        this.setState({username: e.target.value.trim()})
+        if (!this.state.enter) {
+            this.setState({username: e.target.value.trim()});
+        }
     }
 
     // server send url for invite friends (if user was invited, this url is the same as that of the inviter).
@@ -46,11 +48,14 @@ const ws = io('http://localhost:5000', { query: {"url" : url}, transports: ['web
         });
     }
 
-    // if username is valid, state "enter" change on "true" then user join to room and chat and video can be render.
-    setUsername() {
-        if (this.state.username.length && this.state.username.trim() !== '') {
-            this.setState({enter: true})
+    // if username is valid, state "enter" change on "true" then user join to room and chat can be render.
+    setUsername(e) {
+        e.preventDefault();
+        if (this.state.username && this.state.username.trim() !== '') {
+            this.setState({enter: true, error: null});
             ws.emit("username", this.state.username);
+        } else {
+            this.setState({error: "Enter your name."})
         }
     }
 }

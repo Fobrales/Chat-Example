@@ -39,7 +39,7 @@ class Chat extends React.Component {
             <div>
                 <span className={"my-2"}>{users}</span>
                 {this.state.messages.map((message, index) =>
-                    <div key={index} className={"border border-primary p-2 my-1"}><span style={{float: 'right'}}>{message.time}</span>
+                    <div key={index} className={"border border-primary rounded p-2 my-1"}><span style={{float: 'right'}}>{message.time}</span>
                         <span style={{fontWeight: 'bold'}}>{message.user}: </span>
                         <span style={{overflowWrap: "anywhere"}}>{message.text}</span>
                     </div>
